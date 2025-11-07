@@ -1,0 +1,292 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<h1>LCA / EPD Data Request</h1>
+
+<form id="lcaForm" enctype="multipart/form-data" novalidate>
+  <!-- A) Client & Facility -->
+  <fieldset>
+    <legend>Client & Facility</legend>
+    <div class="row">
+      <label>Company<input name="company" required></label>
+      <label>Contact Email<input name="email" type="email" required></label>
+      <label>Facility Name<input name="facility" required></label>
+      <label>Reporting Period<input name="period" placeholder="e.g., Jan–Dec 2024" required></label>
+      <label>Grid Region (if known)<input name="grid_region" placeholder="e.g., US-CAISO / eGRID subregion / country"></label>
+      <label>Confidentiality
+        <select name="confidentiality" required>
+          <option value="consultant_only">Consultant-only</option>
+          <option value="client_internal">Client-internal</option>
+          <option value="public">Public (OK for disclosures)</option>
+        </select>
+      </label>
+    </div>
+  </fieldset>
+
+  <!-- B) Product Definition -->
+  <fieldset>
+    <legend>Product Definition</legend>
+    <div class="row">
+      <label>Product Name<input name="product" required></label>
+      <label>Variant / SKU (optional)<input name="sku" placeholder="e.g., model or pattern code"></label>
+    </div>
+
+    <div class="row">
+      <label>Choose Product Basis
+        <select name="basis_type" id="basis_type" required>
+          <option value="">Select</option>
+          <option value="mass">Mass</option>
+          <option value="area">Area</option>
+          <option value="count">Each / Unit count</option>
+        </select>
+      </label>
+
+      <!-- MASS basis -->
+      <div id="basis_mass" class="hidden row">
+        <label>Product mass per unit
+          <input name="product_mass_value" type="number" min="0" step="0.0001" class="col-small">
+        </label>
+        <label>Mass unit
+          <select name="product_mass_unit" class="col-compact">
+            <option value="kg">kg</option>
+            <option value="g">g</option>
+            <option value="lb">lb</option>
+            <option value="t">t (tonne)</option>
+          </select>
+          <div class="help">Auto-converted to kg.</div>
+        </label>
+      </div>
+
+      <!-- AREA basis -->
+      <div id="basis_area" class="hidden row">
+        <label>Product area per unit
+          <input name="product_area_value" type="number" min="0" step="0.0001" class="col-small">
+        </label>
+        <label>Area unit
+          <select name="product_area_unit" class="col-compact">
+            <option value="m2">m²</option>
+            <option value="ft2">ft²</option>
+            <option value="yd2">yd²</option>
+          </select>
+          <div class="help">Auto-converted to m².</div>
+        </label>
+        <!-- REQUIRED weight per product unit -->
+        <label>Weight per product unit
+          <input name="unit_weight_value_area" type="number" min="0" step="0.0001" required class="col-small">
+        </label>
+        <label>Weight unit
+          <select name="unit_weight_unit_area" class="col-compact" required>
+            <option value="kg">kg</option>
+            <option value="g">g</option>
+            <option value="lb">lb</option>
+            <option value="t">t (tonne)</option>
+          </select>
+          <div class="help">Converted to kg.</div>
+        </label>
+      </div>
+
+      <!-- COUNT basis -->
+      <div id="basis_count" class="hidden row">
+        <label>Units per product (count)
+          <input name="product_units" type="number" min="0" step="1" class="col-small">
+        </label>
+        <label>Describe the unit
+          <input name="product_unit_desc" placeholder="e.g., 1 roll, 1 panel, 1 piece">
+        </label>
+        <!-- REQUIRED weight per product unit -->
+        <label>Weight per product unit
+          <input name="unit_weight_value_count" type="number" min="0" step="0.0001" required class="col-small">
+        </label>
+        <label>Weight unit
+          <select name="unit_weight_unit_count" class="col-compact" required>
+            <option value="kg">kg</option>
+            <option value="g">g</option>
+            <option value="lb">lb</option>
+            <option value="t">t (tonne)</option>
+          </select>
+          <div class="help">Converted to kg.</div>
+        </label>
+      </div>
+    </div>
+
+    <div class="help">Choose the basis that matches how the product is sold. We’ll normalize internally.</div>
+  </fieldset>
+
+  <!-- C) Production Data -->
+  <fieldset>
+    <legend>Production Data (Reporting Period)</legend>
+    <div class="row">
+      <div>
+        <label class="toggle"><input type="radio" name="prod_mode" value="facility_share" required> Facility total production + this product’s share</label>
+        <label class="toggle"><input type="radio" name="prod_mode" value="product_direct"> Direct product production only</label>
+      </div>
+      <div></div>
+    </div>
+
+    <div id="prod_facility_share" class="hidden">
+      <div class="row-3">
+        <label>Facility total production quantity
+          <input name="facility_total_qty" type="number" min="0" step="0.0001">
+        </label>
+        <label>Facility production unit
+          <select name="facility_total_unit">
+            <option value="kg">kg</option>
+            <option value="t">t (tonne)</option>
+            <option value="g">g</option>
+            <option value="lb">lb</option>
+            <option value="m2">m²</option>
+            <option value="ft2">ft²</option>
+            <option value="yd2">yd²</option>
+            <option value="units">units</option>
+            <option value="rolls">rolls</option>
+          </select>
+        </label>
+        <label>Product share of facility production (%)
+          <input name="product_share_pct" type="number" min="0" max="100" step="0.01">
+        </label>
+      </div>
+      <div class="row-3">
+        <label class="muted">Derived: Product quantity in period
+          <input name="product_qty_derived" type="number" step="0.0001" readonly>
+        </label>
+        <label class="muted">Derived: Unit (copied)
+          <input name="product_unit_derived" readonly>
+        </label>
+        <div></div>
+      </div>
+    </div>
+
+    <div id="prod_product_direct" class="hidden">
+      <div class="row-3">
+        <label>Product production quantity
+          <input name="product_direct_qty" type="number" min="0" step="0.0001">
+        </label>
+        <label>Product production unit
+          <select name="product_direct_unit">
+            <option value="kg">kg</option>
+            <option value="t">t (tonne)</option>
+            <option value="g">g</option>
+            <option value="lb">lb</option>
+            <option value="m2">m²</option>
+            <option value="ft2">ft²</option>
+            <option value="yd2">yd²</option>
+            <option value="units">units</option>
+            <option value="rolls">rolls</option>
+          </select>
+        </label>
+        <div></div>
+      </div>
+    </div>
+  </fieldset>
+
+
+  <!-- D) BOM + Transport -->
+  <fieldset>
+    <legend>Bill of Materials (per Product) + Inbound Transport</legend>
+    <div class="toolbar">
+      <div class="controls">
+        <span class="muted">Select inbound modes:</span>
+        <label class="mode-chip"><input type="checkbox" data-mode="road_bom"><span>Road</span><span class="muted">unit</span>
+          <select data-mode-unit="road_bom"><option value="km">km</option><option value="mi">mi</option></select></label>
+        <label class="mode-chip"><input type="checkbox" data-mode="rail_bom"><span>Rail</span><span class="muted">unit</span>
+          <select data-mode-unit="rail_bom"><option value="km">km</option><option value="mi">mi</option></select></label>
+        <label class="mode-chip"><input type="checkbox" data-mode="ship_bom"><span>Ship</span><span class="muted">unit</span>
+          <select data-mode-unit="ship_bom"><option value="km">km</option><option value="mi">mi</option></select></label>
+        <label class="mode-chip"><input type="checkbox" data-mode="air_bom"><span>Air</span><span class="muted">unit</span>
+          <select data-mode-unit="air_bom"><option value="km">km</option><option value="mi">mi</option></select></label>
+      </div>
+      <div class="controls"><label class="toggle"><input type="checkbox" id="compactToggleBOM" checked> Compact view</label></div>
+    </div>
+    <div class="help">Enter mass per product (value + unit). Distances are supplier → facility; enter 0 if a mode isn’t used.</div>
+    <div class="table-wrap">
+      <table id="bomTable" aria-label="BOM + Transport">
+        <thead id="bomHead"></thead>
+        <tbody id="bomBody"></tbody>
+      </table>
+    </div>
+    <div class="controls" style="margin-top:.5rem;">
+      <button type="button" id="addBom">+ Add Component</button>
+      <span id="bomStatus" class="muted" aria-live="polite"></span>
+    </div>
+  </fieldset>
+
+  <!-- E) Packaging -->
+  <fieldset>
+    <legend>Packaging (per Product) + Inbound Transport</legend>
+    <div class="toolbar">
+      <div class="controls">
+        <span class="muted">Select inbound modes:</span>
+        <label class="mode-chip"><input type="checkbox" data-mode="road_pack"><span>Road</span><span class="muted">unit</span>
+          <select data-mode-unit="road_pack"><option value="km">km</option><option value="mi">mi</option></select></label>
+        <label class="mode-chip"><input type="checkbox" data-mode="rail_pack"><span>Rail</span><span class="muted">unit</span>
+          <select data-mode-unit="rail_pack"><option value="km">km</option><option value="mi">mi</option></select></label>
+        <label class="mode-chip"><input type="checkbox" data-mode="ship_pack"><span>Ship</span><span class="muted">unit</span>
+          <select data-mode-unit="ship_pack"><option value="km">km</option><option value="mi">mi</option></select></label>
+        <label class="mode-chip"><input type="checkbox" data-mode="air_pack"><span>Air</span><span class="muted">unit</span>
+          <select data-mode-unit="air_pack"><option value="km">km</option><option value="mi">mi</option></select></label>
+      </div>
+      <div class="controls"><label class="toggle"><input type="checkbox" id="compactTogglePACK" checked> Compact view</label></div>
+    </div>
+    <div class="help">Enter mass per product (value + unit) and inbound distances.</div>
+    <div class="table-wrap">
+      <table id="packTable" aria-label="Packaging + Transport">
+        <thead id="packHead"></thead>
+        <tbody id="packBody"></tbody>
+      </table>
+    </div>
+    <div class="controls" style="margin-top:.5rem;">
+      <button type="button" id="addPack">+ Add Packaging Item</button>
+      <span id="packStatus" class="muted" aria-live="polite"></span>
+    </div>
+  </fieldset>
+
+  <!-- F) Ancillary -->
+  <fieldset>
+    <legend>Ancillary Materials (per Product) + Inbound Transport</legend>
+    <div class="toolbar">
+      <div class="controls">
+        <span class="muted">Select inbound modes:</span>
+        <label class="mode-chip"><input type="checkbox" data-mode="road_anc"><span>Road</span><span class="muted">unit</span>
+          <select data-mode-unit="road_anc"><option value="km">km</option><option value="mi">mi</option></select></label>
+        <label class="mode-chip"><input type="checkbox" data-mode="rail_anc"><span>Rail</span><span class="muted">unit</span>
+          <select data-mode-unit="rail_anc"><option value="km">km</option><option value="mi">mi</option></select></label>
+        <label class="mode-chip"><input type="checkbox" data-mode="ship_anc"><span>Ship</span><span class="muted">unit</span>
+          <select data-mode-unit="ship_anc"><option value="km">km</option><option value="mi">mi</option></select></label>
+        <label class="mode-chip"><input type="checkbox" data-mode="air_anc"><span>Air</span><span class="muted">unit</span>
+          <select data-mode-unit="air_anc"><option value="km">km</option><option value="mi">mi</option></select></label>
+      </div>
+      <div class="controls"><label class="toggle"><input type="checkbox" id="compactToggleANC" checked> Compact view</label></div>
+    </div>
+    <div class="help">Ancillary items used in manufacturing (e.g., adhesives, inks).</div>
+    <div class="table-wrap">
+      <table id="ancTable" aria-label="Ancillary + Transport">
+        <thead id="ancHead"></thead>
+        <tbody id="ancBody"></tbody>
+      </table>
+    </div>
+    <div class="controls" style="margin-top:.5rem;">
+      <button type="button" id="addAnc">+ Add Ancillary Item</button>
+      <span id="ancStatus" class="muted" aria-live="polite"></span>
+    </div>
+  </fieldset>
+
+  <!-- G) Energy -->
+  <fieldset>
+    <legend>Energy (for reporting period)</legend>
+    <div id="energyList"></div>
+    <button type="button" id="addEnergy">+ Add Energy Entry</button>
+    <div class="help">Examples: Electricity (kWh), Natural gas (therms or m³), Steam (MJ).</div>
+  </fieldset>
+
+  <!-- Controls -->
+  <div class="row">
+    <div>
+      <div id="errors" class="error" role="alert" aria-live="polite"></div>
+      <div id="okMsg" class="ok" aria-live="polite"></div>
+    </div>
+    <div style="text-align:right;">
+      <button type="submit">Submit (validate only)</button>
+      <button type="button" id="downloadJson">Download JSON</button>
+      <button type="button" id="downloadZip">Download CSV ZIP</button>
+    </div>
+  </div>
+</form>
