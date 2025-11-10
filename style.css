@@ -87,7 +87,7 @@
   color: var(--scs-dark);
 }
 
-/* Base styles */
+/* Base styles with softer SCS gradient */
 body {
   font-family: var(--font-body);
   font-weight: 400;
@@ -96,7 +96,9 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   color: var(--scs-dark);
-  background-color: #ffffff;
+  background: linear-gradient(135deg, #e6f2ff 0%, #d4f0fc 25%, #e0f7fa 50%, #e8f5e8 75%, #f1f8e9 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
 }
 
 h1 {
@@ -144,6 +146,52 @@ legend {
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
   margin-bottom: 1rem;
+}
+
+/* Style labels to match fieldset appearance */
+.row label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+  font-weight: 500;
+  color: var(--scs-dark);
+  font-size: 0.95rem;
+  padding: 1rem;
+  background: white;
+  border: 2px solid var(--scs-border);
+  border-radius: var(--border-radius);
+  transition: all 0.3s ease;
+}
+
+/* Make all inputs and selects consistent */
+.row label input,
+.row label select {
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--scs-border);
+  border-radius: var(--border-radius);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.row label input:focus,
+.row label select:focus {
+  outline: none;
+  border-color: var(--scs-accent);
+  box-shadow: 0 0 0 3px rgba(0, 163, 224, 0.1);
+  background: var(--scs-light);
+}
+
+.row label:hover {
+  border-color: var(--scs-primary);
+  box-shadow: 0 2px 8px rgba(0, 86, 163, 0.1);
+}
+
+.row label:focus-within {
+  border-color: var(--scs-accent);
+  box-shadow: 0 0 0 3px rgba(0, 163, 224, 0.1);
 }
 
 .row-3 {
@@ -223,16 +271,24 @@ button[type="button"]:hover {
   box-shadow: 0 4px 12px rgba(0, 86, 163, 0.3);
 }
 
+/* SCS Green Remove Buttons */
 button.remove {
-  background: var(--scs-error);
+  background: #43b02a; /* Exact SCS website green */
   color: white;
   padding: 0.5rem 1rem;
   font-size: 0.85rem;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: var(--font-primary);
+  font-weight: 600;
 }
 
 button.remove:hover {
-  background: #b71c1c;
+  background: #3a9a24; /* Darker shade for hover */
   transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(67, 176, 42, 0.3);
 }
 
 /* Toolbar and controls */
@@ -259,11 +315,29 @@ button.remove:hover {
 /* Toggle and checkbox styling */
 .toggle {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  align-items: flex-start;
+  gap: 0.75rem;
   font-family: var(--font-body);
   font-weight: 500;
   color: var(--scs-dark);
+  padding: 1rem;
+  background: white;
+  border: 2px solid var(--scs-border);
+  border-radius: var(--border-radius);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.toggle:hover {
+  border-color: var(--scs-accent);
+  background: var(--scs-light);
+}
+
+.toggle input[type="radio"] {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
 }
 
 input[type="checkbox"],
@@ -272,12 +346,13 @@ input[type="radio"] {
   transform: scale(1.1);
 }
 
-/* Mode chips - enhanced styling */
+/* Improved Mode Chips Styling */
 .mode-chip {
   display: flex;
+  flex-direction: column; /* Stack vertically */
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  gap: 0.25rem; /* Reduced gap */
+  padding: 0.5rem 0.75rem;
   background: white;
   border: 2px solid var(--scs-border);
   border-radius: 25px;
@@ -285,6 +360,7 @@ input[type="radio"] {
   font-weight: 500;
   transition: all 0.3s ease;
   cursor: pointer;
+  min-width: 80px; /* Consistent width */
 }
 
 .mode-chip:hover {
@@ -292,13 +368,50 @@ input[type="radio"] {
   background: var(--scs-light);
 }
 
-.mode-chip input[type="checkbox"]:checked + span {
-  color: var(--scs-primary);
+.mode-chip input[type="checkbox"] {
+  margin: 0; /* Remove default margins */
+  order: -1; /* Move checkbox to top */
+}
+
+.mode-chip span:first-of-type {
   font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.mode-chip span.muted {
+  font-size: 0.8rem;
+  color: var(--scs-gray);
+}
+
+.mode-chip select {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--scs-border);
+  border-radius: 4px;
+  background: white;
+}
+
+/* Checked state for mode chips */
+.mode-chip input[type="checkbox"]:checked {
+  accent-color: var(--scs-primary);
+}
+
+.mode-chip input[type="checkbox"]:checked ~ span:first-of-type {
+  color: var(--scs-primary);
 }
 
 .mode-chip input[type="checkbox"]:checked ~ span.muted {
   color: var(--scs-primary);
+  opacity: 0.8;
+}
+
+.mode-chip input[type="checkbox"]:checked ~ select {
+  border-color: var(--scs-primary);
+}
+
+/* Improved Mode Chips Container */
+.controls .mode-chip {
+  margin-bottom: 0.5rem;
 }
 
 /* Table styling */
@@ -331,7 +444,7 @@ th {
   position: sticky;
   top: 0;
   z-index: 2;
-  text-align: left;
+  text-align: center; /* CHANGE: Center ALL header text */
 }
 
 thead tr:first-child th {
@@ -350,8 +463,22 @@ tbody tr:hover {
   background: var(--scs-light);
 }
 
-td.num, th.num {
+/* Center component names and remove buttons */
+th:first-child,
+td:first-child,
+td.shrink {
+  text-align: center;
+}
+
+/* Keep numeric DATA cells right-aligned for numbers */
+td.num {
   text-align: right;
+  white-space: nowrap;
+}
+
+/* But center the numeric HEADER labels (Value, Unit) */
+th.num {
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -426,6 +553,41 @@ td select {
 
 .hidden {
   display: none !important;
+}
+
+/* Fix production data radio buttons */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.radio-group .toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: white;
+  border: 2px solid var(--scs-border);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 0;
+}
+
+.radio-group .toggle:hover {
+  border-color: var(--scs-accent);
+  background: var(--scs-light);
+}
+
+.radio-group .toggle input[type="radio"] {
+  margin-top: 0.1rem;
+  flex-shrink: 0;
+}
+
+.radio-group .toggle span {
+  line-height: 1.4;
+  flex: 1;
 }
 
 /* Responsive design */

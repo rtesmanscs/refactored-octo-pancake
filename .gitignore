@@ -1,3 +1,10 @@
+# macOS system files
 .DS_Store
 *.DS_Store
 **/.DS_Store
+
+# Optional: other common excludes
+Thumbs.db
+*.log
+node_modules/
+.env

@@ -137,12 +137,18 @@
   <fieldset>
     <legend>Production Data (Reporting Period)</legend>
     <div class="row">
-      <div>
-        <label class="toggle"><input type="radio" name="prod_mode" value="facility_share" required> Facility total production + this product's share</label>
-        <label class="toggle"><input type="radio" name="prod_mode" value="product_direct"> Direct product production only</label>
-      </div>
-      <div></div>
-    </div>
+  <div class="radio-group">
+    <label class="toggle">
+      <input type="radio" name="prod_mode" value="facility_share" required>
+      <span>Facility total production + this product's share</span>
+    </label>
+    <label class="toggle">
+      <input type="radio" name="prod_mode" value="product_direct">
+      <span>Direct product production only</span>
+    </label>
+  </div>
+  <div></div>
+</div>
 
     <div id="prod_facility_share" class="hidden">
       <div class="row-3">
@@ -293,7 +299,7 @@
 
   <!-- G) Energy -->
   <fieldset>
-    <legend>Energy (for reporting period)</legend>
+    <legend> Facility Energy (for reporting period)</legend>
     <div id="energyList"></div>
     <button type="button" id="addEnergy">+ Add Energy Entry</button>
     <div class="help">Examples: Electricity (kWh), Natural gas (therms or m³), Steam (MJ).</div>
