@@ -1,5 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LCA / EPD Data Request</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
 <h1>LCA / EPD Data Request</h1>
 
 <form id="lcaForm" enctype="multipart/form-data" novalidate>
@@ -108,7 +119,7 @@
       </div>
     </div>
 
-    <div class="help">Choose the basis that matches how the product is sold. We’ll normalize internally.</div>
+    <div class="help">Choose the basis that matches how the product is sold. We'll normalize internally.</div>
   </fieldset>
 
   <!-- C) Production Data -->
@@ -116,7 +127,7 @@
     <legend>Production Data (Reporting Period)</legend>
     <div class="row">
       <div>
-        <label class="toggle"><input type="radio" name="prod_mode" value="facility_share" required> Facility total production + this product’s share</label>
+        <label class="toggle"><input type="radio" name="prod_mode" value="facility_share" required> Facility total production + this product's share</label>
         <label class="toggle"><input type="radio" name="prod_mode" value="product_direct"> Direct product production only</label>
       </div>
       <div></div>
@@ -196,7 +207,7 @@
       </div>
       <div class="controls"><label class="toggle"><input type="checkbox" id="compactToggleBOM" checked> Compact view</label></div>
     </div>
-    <div class="help">Enter mass per product (value + unit). Distances are supplier → facility; enter 0 if a mode isn’t used.</div>
+    <div class="help">Enter mass per product (value + unit). Distances are supplier → facility; enter 0 if a mode isn't used.</div>
     <div class="table-wrap">
       <table id="bomTable" aria-label="BOM + Transport">
         <thead id="bomHead"></thead>
@@ -290,3 +301,7 @@
     </div>
   </div>
 </form>
+
+<script src="script.js"></script>
+</body>
+</html>
