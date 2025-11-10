@@ -438,7 +438,8 @@ function initializeApp() {
     headEl: qs('#ancHead'), bodyEl: qs('#ancBody'),
     compactToggleEl: qs('#compactToggleANC'),
     addRowBtnEl: qs('#addAnc'), statusEl: qs('#ancStatus'),
-    basePlaceholders: { component: 'e.g., Adhesive, ink, release liner', supplier: 'Supplier (optional)' }
+    basePlaceholders: { component: 'e.g., Adhesive, ink, release liner', supplier: 'Supplier (optional)' },
+    dualMass: false
   });
 
   // ===== Energy =====
@@ -487,52 +488,56 @@ function initializeApp() {
   addEnergyEntry();
 
   // ===== Product-mass QC =====
-  function sumUsedMassKgFromSection(items) {
-    return (items || []).reduce((s, it) => s + (parseFloat(it.mass_used_kg_per_product) || 0), 0);
-  }
+function sumUsedMassKgFromSection(items) {
+  return (items || []).reduce((s, it) => s + (parseFloat(it.mass_used_kg_per_product) || 0), 0);
+}
+
+function sumInputMassKgFromSection(items) {
+  return (items || []).reduce((s, it) => s + (parseFloat(it.mass_input_kg_per_product) || 0), 0);
+}
+
+function sumAncillaryMassKgFromSection(items) {
+  return (items || []).reduce((s, it) => s + (parseFloat(it.mass_kg_per_product) || 0), 0);
+}
+
+function updateProductMassQC() {
+  if (!bom || !pack || !anc) return;
+  const statusEl = qs('#bomStatus');
+  if (!statusEl) return;
   
-  function getProductBasisMassKg() {
-    const bt = qs('#basis_type')?.value;
-    if (bt === 'mass') {
-      return toKg(form.product_mass_value?.value, form.product_mass_unit?.value) || null;
-    }
-    if (bt === 'area') {
-      return toKg(form.unit_weight_value_area?.value, form.unit_weight_unit_area?.value) || null;
-    }
-    if (bt === 'count') {
-      return toKg(form.unit_weight_value_count?.value, form.unit_weight_unit_count?.value) || null;
-    }
-    return null;
-  }
+  const bomData = bom.collectRows();
+  const packData = pack.collectRows();
+  const ancData = anc.collectRows();
   
-  function updateProductMassQC() {
-    if (!bom || !pack) return;
-    const statusEl = qs('#bomStatus');
-    if (!statusEl) return;
-    
-    const bomData  = bom.collectRows();
-    const packData = pack.collectRows();
-    const usedBom  = sumUsedMassKgFromSection(bomData.items);
-    const usedPack = sumUsedMassKgFromSection(packData.items);
-    const usedTotal = usedBom + usedPack;
+  const usedBom = sumUsedMassKgFromSection(bomData.items);
+  const usedPack = sumUsedMassKgFromSection(packData.items);
+  const inputBom = sumInputMassKgFromSection(bomData.items);
+  const inputPack = sumInputMassKgFromSection(packData.items);
+  const ancillaryMass = sumAncillaryMassKgFromSection(ancData.items);
+  
+  // Total mass in final product
+  const usedTotal = usedBom + usedPack;
+  
+  // Total mass input to production system (including waste and ancillary)
+  const inputTotal = inputBom + inputPack + ancillaryMass;
 
-    const context = `Used mass — BOM: ${usedBom.toFixed(4)} kg, Packaging: ${usedPack.toFixed(4)} kg, Total: ${usedTotal.toFixed(4)} kg. `;
-    const productMass = getProductBasisMassKg();
+  const context = `Production mass — Final product: ${usedTotal.toFixed(4)} kg | Total inputs: ${inputTotal.toFixed(4)} kg (BOM: ${inputBom.toFixed(4)} kg, Packaging: ${inputPack.toFixed(4)} kg, Ancillary: ${ancillaryMass.toFixed(4)} kg). `;
+  const productMass = getProductBasisMassKg();
 
-    if (!productMass || productMass <= 0) {
-      statusEl.className = 'muted';
-      statusEl.textContent = context + 'Enter product basis mass (or unit weight) to enable QC.';
-      return;
-    }
-
-    const diff = usedTotal - productMass;
-    const pct  = (diff / productMass) * 100;
-    const withinTol = Math.abs(pct) <= MASS_TOL_PCT;
-    statusEl.className = withinTol ? 'ok' : 'warn';
-    statusEl.textContent = context +
-      `Product mass: ${productMass.toFixed(4)} kg | Δ = ${diff.toFixed(4)} kg (${pct.toFixed(2)}%). ` +
-      (withinTol ? `Within tolerance (±${MASS_TOL_PCT}%).` : 'Outside tolerance—adjust or explain.');
+  if (!productMass || productMass <= 0) {
+    statusEl.className = 'muted';
+    statusEl.textContent = context + 'Enter product basis mass to enable QC.';
+    return;
   }
+
+  const diff = usedTotal - productMass;
+  const pct = (diff / productMass) * 100;
+  const withinTol = Math.abs(pct) <= MASS_TOL_PCT;
+  statusEl.className = withinTol ? 'ok' : 'warn';
+  statusEl.textContent = context +
+    `Product mass: ${productMass.toFixed(4)} kg | Δ = ${diff.toFixed(4)} kg (${pct.toFixed(2)}%). ` +
+    (withinTol ? `Within tolerance (±${MASS_TOL_PCT}%).` : 'Outside tolerance—adjust or explain.');
+}
   
   qsa('input[name="product_mass_value"], select[name="product_mass_unit"], \
        input[name="unit_weight_value_area"], select[name="unit_weight_unit_area"], \
@@ -906,137 +911,247 @@ function initializeApp() {
       window.XLSX.utils.book_append_sheet(wb, ws, name);
     }
 
-    function buildWorkbookFromPayload(payload) {
-      const XLSX = window.XLSX;
-      const wb = XLSX.utils.book_new();
+function buildWorkbookFromPayload(payload) {
+  const XLSX = window.XLSX;
+  const wb = XLSX.utils.book_new();
 
-      const a1Rows = payload.bom.map(b => ({
-        component: b.component,
-        mass_input_kg_per_product: b.mass_input_kg_per_product,
-        mass_used_kg_per_product:  b.mass_used_kg_per_product,
-        supplier: b.supplier || null,
-        country:  b.country  || null,
-        pre_consumer_pct:  b.pre_consumer_pct,
-        post_consumer_pct: b.post_consumer_pct,
-        module: "A1"
-      }));
-      addSheet(
-        wb,
-        'A1_materials',
-        a1Rows,
-        ["component","mass_input_kg_per_product","mass_used_kg_per_product","supplier","country","pre_consumer_pct","post_consumer_pct","module"],
-        { mass_input_kg_per_product: "0.0000", mass_used_kg_per_product: "0.0000", pre_consumer_pct: "0.0", post_consumer_pct: "0.0" }
-      );
+  // Safe number formatting helper
+  const safeNumber = (value, decimals = 6) => {
+    if (value === null || value === undefined || isNaN(value)) return 0;
+    return +Number(value).toFixed(decimals);
+  };
 
-      const a2Rows = computeTonKmRows(payload.transport.bom.inbound_flat, payload.bom, "A2", true);
-      addSheet(
-        wb,
-        'A2_inbound_transport_bom',
-        a2Rows,
-        ["component","mode","distance_value","distance_unit","distance_km","mass_kg_per_product","ton_km_per_product","module"],
-        { distance_value: "0.00", distance_km: "0.00", mass_kg_per_product: "0.0000", ton_km_per_product: "0.000000" }
-      );
+  // ===== TAB 1: Product Information =====
+  const productInfoRows = [{
+    company: payload.meta.company || '',
+    contact_email: payload.meta.email || '',
+    facility: payload.meta.facility || '',
+    reporting_period: payload.meta.period || '',
+    grid_region: payload.meta.grid_region || 'Not specified',
+    confidentiality: payload.meta.confidentiality || '',
+    product_name: payload.product.name || '',
+    product_sku: payload.product.sku || '',
+    basis_type: payload.basis.type || '',
+    basis_mass_kg: safeNumber(payload.basis.mass_kg),
+    basis_area_m2: safeNumber(payload.basis.area_m2),
+    basis_units: payload.basis.units || '',
+    basis_unit_desc: payload.basis.unit_desc || '',
+    basis_unit_weight_kg: safeNumber(payload.basis.unit_weight_kg),
+    production_mode: payload.production.mode || '',
+    facility_total_qty_kg: safeNumber(payload.production_std.facility_total_qty_std),
+    product_direct_qty_kg: safeNumber(payload.production_std.product_direct_qty_std),
+    period_product_output_kg: safeNumber(payload.production.period_product_output)
+  }];
 
-      const a3PackRows = payload.packaging.map(p => ({
-        component: p.component,
-        mass_input_kg_per_product: p.mass_input_kg_per_product,
-        mass_used_kg_per_product:  p.mass_used_kg_per_product,
-        supplier: p.supplier || null,
-        country:  p.country  || null,
-        pre_consumer_pct:  p.pre_consumer_pct,
-        post_consumer_pct: p.post_consumer_pct,
-        module: "A3"
-      }));
-      addSheet(
-        wb,
-        'A3_packaging_materials',
-        a3PackRows,
-        ["component","mass_input_kg_per_product","mass_used_kg_per_product","supplier","country","pre_consumer_pct","post_consumer_pct","module"],
-        { mass_input_kg_per_product: "0.0000", mass_used_kg_per_product: "0.0000", pre_consumer_pct: "0.0", post_consumer_pct: "0.0" }
-      );
-      
-      const a3PackTransport = computeTonKmRows(payload.transport.packaging.inbound_flat, payload.packaging, "A3", true);
-      addSheet(
-        wb,
-        'A3_inbound_transport_packaging',
-        a3PackTransport,
-        ["component","mode","distance_value","distance_unit","distance_km","mass_kg_per_product","ton_km_per_product","module"],
-        { distance_value: "0.00", distance_km: "0.00", mass_kg_per_product: "0.0000", ton_km_per_product: "0.000000" }
-      );
-
-      const a3AncRows = payload.ancillary.map(a => ({
-        component: a.component,
-        mass_kg_per_product: a.mass_kg_per_product,
-        supplier: a.supplier || null,
-        country:  a.country  || null,
-        pre_consumer_pct:  a.pre_consumer_pct,
-        post_consumer_pct: a.post_consumer_pct,
-        module: "A3"
-      }));
-      addSheet(
-        wb,
-        'A3_ancillary_materials',
-        a3AncRows,
-        ["component","mass_kg_per_product","supplier","country","pre_consumer_pct","post_consumer_pct","module"],
-        { mass_kg_per_product: "0.0000", pre_consumer_pct: "0.0", post_consumer_pct: "0.0" }
-      );
-      
-      const a3AncTransport = computeTonKmRows(payload.transport.ancillary.inbound_flat, payload.ancillary, "A3");
-      addSheet(
-        wb,
-        'A3_inbound_transport_ancillary',
-        a3AncTransport,
-        ["component","mode","distance_value","distance_unit","distance_km","mass_kg_per_product","ton_km_per_product","module"],
-        { distance_value: "0.00", distance_km: "0.00", mass_kg_per_product: "0.0000", ton_km_per_product: "0.000000" }
-      );
-
-      const energyRows = (payload.energy || []).map(e => {
-        const ppo = payload.production?.period_product_output;
-        const per = (ppo && ppo > 0) ? (e.amount / ppo) : null;
-        return {
-          type: e.type, amount: e.amount, unit: e.unit,
-          per_product_amount: per !== null ? +per.toFixed(8) : null,
-          per_product_note: per !== null ? 'Computed as amount / period_product_output' : null,
-          notes: e.notes || null
-        };
-      });
-      addSheet(
-        wb,
-        'energy',
-        energyRows,
-        ["type","amount","unit","per_product_amount","per_product_note","notes"],
-        { amount: "0.0000", per_product_amount: "0.00000000" }
-      );
-
-      const m = payload;
-      const metaRow = [{
-        company: m.meta.company,
-        facility: m.meta.facility,
-        period: m.meta.period,
-        product: m.product.name,
-        sku: m.product.sku || '',
-        basis_type: m.basis.type,
-        basis_mass_kg: m.basis.mass_kg,
-        basis_area_m2: m.basis.area_m2,
-        basis_units: m.basis.units,
-        basis_unit_desc: m.basis.unit_desc,
-        basis_unit_weight_kg: m.basis.unit_weight_kg,
-        facility_total_qty_std: m.production_std?.facility_total_qty_std ?? null,
-        facility_total_unit_std: m.production_std?.facility_total_unit_std ?? null,
-        product_direct_qty_std: m.production_std?.product_direct_qty_std ?? null,
-        product_direct_unit_std: m.production_std?.product_direct_unit_std ?? null,
-        period_product_output: m.production?.period_product_output ?? null
-      }];
-      addSheet(
-        wb,
-        '_meta_summary',
-        metaRow,
-        ["company","facility","period","product","sku","basis_type","basis_mass_kg","basis_area_m2","basis_units","basis_unit_desc","basis_unit_weight_kg","facility_total_qty_std","facility_total_unit_std","product_direct_qty_std","product_direct_unit_std","period_product_output"],
-        { basis_mass_kg: "0.0000", basis_area_m2: "0.0000", basis_unit_weight_kg: "0.0000", facility_total_qty_std: "0.0000", product_direct_qty_std: "0.0000", period_product_output: "0.0000" }
-      );
-
-      return wb;
+  addSheet(
+    wb,
+    '1_Product_Info',
+    productInfoRows,
+    [
+      "company", "contact_email", "facility", "reporting_period", "grid_region", "confidentiality",
+      "product_name", "product_sku", "basis_type", "basis_mass_kg", "basis_area_m2", "basis_units",
+      "basis_unit_desc", "basis_unit_weight_kg", "production_mode", "facility_total_qty_kg", 
+      "product_direct_qty_kg", "period_product_output_kg"
+    ],
+    { 
+      basis_mass_kg: "0.0000", basis_area_m2: "0.0000", basis_unit_weight_kg: "0.0000",
+      facility_total_qty_kg: "0.0000", product_direct_qty_kg: "0.0000",
+      period_product_output_kg: "0.0000"
     }
+  );
+
+    // ===== TAB 2: Raw Materials =====
+  const materialRows = [];
+
+  // BOM Materials (A1)
+  (payload.bom || []).forEach(item => {
+    if (item && item.component) {
+      materialRows.push({
+        material_type: 'BOM',
+        component: item.component || '',
+        mass_kg_per_product: safeNumber(item.mass_used_kg_per_product),
+        supplier: item.supplier || '',
+        country: item.country || '',
+        pre_consumer_pct: safeNumber(item.pre_consumer_pct, 1),
+        post_consumer_pct: safeNumber(item.post_consumer_pct, 1),
+        module: 'A1',
+        notes: 'Raw material input'
+      });
+    }
+  });
+
+  // Packaging Materials (A3)
+  (payload.packaging || []).forEach(item => {
+    if (item && item.component) {
+      materialRows.push({
+        material_type: 'Packaging',
+        component: item.component || '',
+        mass_kg_per_product: safeNumber(item.mass_used_kg_per_product),
+        supplier: item.supplier || '',
+        country: item.country || '',
+        pre_consumer_pct: safeNumber(item.pre_consumer_pct, 1),
+        post_consumer_pct: safeNumber(item.post_consumer_pct, 1),
+        module: 'A3',
+        notes: 'Packaging material'
+      });
+    }
+  });
+
+      // Ancillary Materials (A3)
+      (payload.ancillary || []).forEach(item => {
+        if (item && item.component) {
+          materialRows.push({
+            material_type: 'Ancillary',
+            component: item.component || '',
+            mass_kg_per_product: safeNumber(item.mass_kg_per_product), // This is the actual mass used!
+            supplier: item.supplier || '',
+            country: item.country || '',
+            pre_consumer_pct: safeNumber(item.pre_consumer_pct, 1),
+            post_consumer_pct: safeNumber(item.post_consumer_pct, 1),
+            module: 'A3',
+            notes: 'Ancillary material - consumed in production process'
+          });
+        }
+      });
+
+  // ADD THIS SHEET CREATION - IT WAS MISSING!
+  addSheet(
+    wb,
+    '2_Raw_Materials',
+    materialRows,
+    [
+      "material_type", "component", "mass_kg_per_product", "supplier", "country",
+      "pre_consumer_pct", "post_consumer_pct", "module", "notes"
+    ],
+    { 
+      mass_kg_per_product: "0.0000", 
+      pre_consumer_pct: "0.0", 
+      post_consumer_pct: "0.0" 
+    }
+  );
+
+  // ===== TAB 3: Transport Data =====
+  const transportRows = [];
+
+  // Combine all transport data with safe array access
+  const allTransport = [
+    ...((payload.transport?.bom?.inbound_flat || []).map(t => ({ ...t, material_type: 'BOM', module: 'A2' }))),
+    ...((payload.transport?.packaging?.inbound_flat || []).map(t => ({ ...t, material_type: 'Packaging', module: 'A3' }))),
+    ...((payload.transport?.ancillary?.inbound_flat || []).map(t => ({ ...t, material_type: 'Ancillary', module: 'A3' })))
+  ];
+
+    // Get INPUT mass data for ton-km calculations
+  const inputMassByComponent = {};
+
+  // BOM: Use input mass for transport
+  (payload.bom || []).forEach(item => {
+    if (item && item.component && item.mass_input_kg_per_product) {
+      inputMassByComponent[item.component] = item.mass_input_kg_per_product;
+    }
+  });
+
+  // Packaging: Use input mass for transport  
+  (payload.packaging || []).forEach(item => {
+    if (item && item.component && item.mass_input_kg_per_product) {
+      inputMassByComponent[item.component] = item.mass_input_kg_per_product;
+    }
+  });
+
+  // FIX: Ancillary uses mass_kg_per_product (not mass_input_kg_per_product)
+  (payload.ancillary || []).forEach(item => {
+    if (item && item.component) {
+      // For ancillary, all mass is input mass since it's fully consumed
+      inputMassByComponent[item.component] = item.mass_kg_per_product || 0;
+    }
+  });
+
+  // Debug: Check if we're getting ancillary mass data
+  console.log('=== TRANSPORT DEBUG ===');
+  console.log('Ancillary items:', payload.ancillary);
+  console.log('Input mass mapping:', inputMassByComponent);
+
+  allTransport.forEach(transport => {
+    const inputMassKg = inputMassByComponent[transport.component] || 0;
+    const distanceKm = transport.distance_km || 0;
+    
+    // ALWAYS calculate transport in METRIC: ton-km
+    const transportAmount = (distanceKm * (inputMassKg / 1000));
+    
+    transportRows.push({
+      material_type: transport.material_type || '',
+      component: transport.component || '',
+      transport_mode: transport.mode || '',
+      distance_value: safeNumber(transport.distance_value, 2),
+      distance_unit: transport.distance_unit || '',
+      distance_km: safeNumber(distanceKm, 2),
+      input_mass_kg: safeNumber(inputMassKg),
+      transport_amount_t_km: safeNumber(transportAmount),
+      module: transport.module || '',
+      notes: `${transport.material_type} transport - ${transport.material_type === 'Ancillary' ? 'consumed in production' : 'standardized to metric'}`
+    });
+  });
+
+  addSheet(
+    wb,
+    '3_Transport_Data',
+    transportRows,
+    [
+      "material_type", "component", "transport_mode", "distance_value", "distance_unit",
+      "distance_km", "input_mass_kg", "transport_amount_t_km", "module", "notes"
+    ],
+    { 
+      distance_km: "0.00",
+      input_mass_kg: "0.000000",
+      transport_amount_t_km: "0.000000"
+    }
+  );
+
+  // ===== TAB 4: Production Data =====
+  const productionRows = [];
+  
+  // Energy data
+  (payload.energy || []).forEach(energy => {
+    if (energy && energy.type) {
+      const perProduct = payload.production?.period_product_output && payload.production.period_product_output > 0 
+        ? (energy.amount / payload.production.period_product_output)
+        : null;
+      
+      productionRows.push({
+        data_type: 'Energy',
+        category: energy.type,
+        value: safeNumber(energy.amount),
+        unit: energy.unit || '',
+        value_per_product: safeNumber(perProduct, 8),
+        notes: energy.notes || `${energy.type} consumption`
+      });
+    }
+  });
+  
+  // Production summary
+  productionRows.push({
+    data_type: 'Production',
+    category: 'Period Product Output',
+    value: safeNumber(payload.production?.period_product_output),
+    unit: 'kg',
+    value_per_product: 1, // This is the reference flow
+    notes: 'Functional unit reference'
+  });
+  
+  addSheet(
+    wb,
+    '4_Production_Data',
+    productionRows,
+    [
+      "data_type", "category", "value", "unit", "value_per_product", "notes"
+    ],
+    { 
+      value: "0.0000", 
+      value_per_product: "0.00000000" 
+    }
+  );
+
+  return wb;
+}
 
     function addXlsxButton() {
       const btn = document.createElement('button');
