@@ -93,31 +93,60 @@ function initializeApp() {
   }
 
   // ===== Production toggles & derived =====
-  const prodModeInputs   = qsa('input[name="prod_mode"]');
+  const toggleBtns = qsa('.toggle-btn');
   const wrapFacilityShare = qs('#prod_facility_share');
   const wrapProductDirect = qs('#prod_product_direct');
-  
-  function updateProdMode() {
-    const mode = (prodModeInputs.find(r => r.checked) || {}).value;
-    if (wrapFacilityShare) wrapFacilityShare.classList.toggle('hidden', mode !== 'facility_share');
-    if (wrapProductDirect) wrapProductDirect.classList.toggle('hidden', mode !== 'product_direct');
-  }
-  prodModeInputs.forEach(r => r.addEventListener('change', updateProdMode));
 
-  const facilityQty  = qs('input[name="facility_total_qty"]');
-  const facilityUnit = qs('[name="facility_total_unit"]');
-  const sharePct     = qs('input[name="product_share_pct"]');
-  const derivedQty   = qs('input[name="product_qty_derived"]');
-  const derivedUnit  = qs('input[name="product_unit_derived"]');
-  
-  function recalcDerived() {
-    if (!facilityQty || !sharePct || !derivedQty) return;
-    const f = parseFloat(facilityQty.value || '0');
-    const p = parseFloat(sharePct.value   || '0');
-    derivedQty.value  = (!isNaN(f) && !isNaN(p) && f >= 0 && p >= 0) ? (f * (p/100)).toFixed(6) : '';
-    derivedUnit.value = (facilityUnit?.value) || '';
+  // If toggle buttons don't exist, fall back to radio buttons for now
+  let productionMode = 'facility_share';
+
+  if (toggleBtns.length > 0) {
+    // New button toggle system
+    function setProductionMode(mode) {
+      // Update buttons
+      toggleBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+      });
+      
+      // Update content visibility
+      if (wrapFacilityShare) wrapFacilityShare.classList.toggle('hidden', mode !== 'facility_share');
+      if (wrapProductDirect) wrapProductDirect.classList.toggle('hidden', mode !== 'product_direct');
+      
+      // Set hidden input for form submission
+      let hiddenInput = qs('input[name="prod_mode"]');
+      if (!hiddenInput) {
+        hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'prod_mode';
+        qs('#lcaForm').appendChild(hiddenInput);
+      }
+      hiddenInput.value = mode;
+      productionMode = mode;
+    }
+
+    // Add click events
+    toggleBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        setProductionMode(btn.dataset.mode);
+      });
+    });
+
+    // Set initial state
+    setProductionMode('facility_share');
+  } else {
+    // Fallback to old radio button system
+    const prodModeInputs = qsa('input[name="prod_mode"]');
+    
+    function updateProdMode() {
+      const mode = (prodModeInputs.find(r => r.checked) || {}).value;
+      if (wrapFacilityShare) wrapFacilityShare.classList.toggle('hidden', mode !== 'facility_share');
+      if (wrapProductDirect) wrapProductDirect.classList.toggle('hidden', mode !== 'product_direct');
+      productionMode = mode;
+    }
+    
+    prodModeInputs.forEach(r => r.addEventListener('change', updateProdMode));
+    updateProdMode();
   }
-  [facilityQty, sharePct, facilityUnit].filter(Boolean).forEach(i => i.addEventListener('input', recalcDerived));
 
   // ===== Inline Transport Section (BOM / PACK / ANC) =====
   const MODE_KEYS = ['road','rail','ship','air'];
@@ -140,11 +169,13 @@ function initializeApp() {
 
     qsa(`[data-mode$="_${sectionKey}"]`).forEach(cb => {
       const key = cb.dataset.mode;
+      const parentLabel = cb.closest('.mode-chip');
+      console.log('Mode chip element:', parentLabel);
       cb.addEventListener('change', (e) => {
         if (e.target.checked) selectedModes.add(key); else selectedModes.delete(key);
         renderHeader(); syncRowsToModes();
       });
-    });
+    });   
     
     qsa(`[data-mode-unit$="_${sectionKey}"]`).forEach(sel => {
       const key = sel.dataset.modeUnit;
@@ -783,7 +814,7 @@ function initializeApp() {
       if (!(uw > 0)) { e.preventDefault(); errors.textContent = 'Provide weight per product unit (value + unit).'; return; }
     }
 
-    const mode = (qsa('input[name="prod_mode"]').find(r => r.checked) || {}).value;
+    const mode = qs('input[name="prod_mode"]')?.value;
     if (!mode) { e.preventDefault(); errors.textContent = 'Select how you want to report production data.'; return; }
     if (mode === 'facility_share') {
       const f = parseFloat(form.facility_total_qty.value);

@@ -235,6 +235,30 @@ select:focus {
   background: var(--scs-light);
 }
 
+/* Consistent font sizing for all inputs */
+input[type="text"],
+input[type="email"],
+input[type="number"],
+select,
+textarea {
+  font-size: 0.95rem !important;
+  font-family: var(--font-body) !important;
+}
+
+/* Specific consistency for table inputs */
+td input[type="number"],
+td input[type="text"],
+td select {
+  font-size: 0.95rem !important;
+  font-family: var(--font-body) !important;
+}
+
+/* Consistency for labels */
+label {
+  font-size: 0.95rem !important;
+}
+
+
 /* Button styling */
 button {
   font-family: var(--font-primary);
@@ -312,46 +336,78 @@ button.remove:hover {
   flex-wrap: wrap;
 }
 
-/* Toggle and checkbox styling */
-.toggle {
+/* Production Data Button Toggle */
+.production-toggle {
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.toggle-btn {
+  flex: 1;
+  min-width: 250px;
+  padding: 1.5rem;
+  background: white;
+  border: 3px solid var(--scs-border);
+  border-radius: var(--border-radius);
   font-family: var(--font-body);
   font-weight: 500;
+  font-size: 1rem;
   color: var(--scs-dark);
-  padding: 1rem;
-  background: white;
-  border: 2px solid var(--scs-border);
-  border-radius: var(--border-radius);
-  transition: all 0.3s ease;
   cursor: pointer;
-  margin-bottom: 0.5rem;
+  transition: all 0.3s ease;
+  text-align: center;
   line-height: 1.4;
 }
 
-.toggle:hover {
+.toggle-btn:hover {
   border-color: var(--scs-accent);
   background: var(--scs-light);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 86, 163, 0.1);
 }
 
-.toggle input[type="radio"] {
-  margin-top: 0.2rem;
+.toggle-btn.active {
+  border-color: var(--scs-primary);
+  background: var(--scs-light);
+  color: var(--scs-primary);
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 86, 163, 0.15);
+}
+
+
+/* === COMPACT VIEW TOGGLE === */
+.controls .toggle {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0;
+  min-width: auto;
+  white-space: nowrap;
+}
+
+.controls .toggle input[type="checkbox"] {
+  margin: 0 !important;
   flex-shrink: 0;
-}
-
-input[type="checkbox"],
-input[type="radio"] {
-  accent-color: var(--scs-primary);
   transform: scale(1.1);
+  position: relative;
+  top: 0;
 }
 
-/* Improved Mode Chips Styling */
+.controls .toggle span {
+  flex: none;
+}
+
+
+
+/* === MODE CHIPS (Inbound Transport) === */
 .mode-chip {
-  display: flex;
-  flex-direction: column; /* Stack vertically */
+  display: inline-flex !important;
+  flex-direction: row !important;
   align-items: center;
-  gap: 0.25rem; /* Reduced gap */
+  gap: 0.5rem;
   padding: 0.5rem 0.75rem;
   background: white;
   border: 2px solid var(--scs-border);
@@ -360,17 +416,17 @@ input[type="radio"] {
   font-weight: 500;
   transition: all 0.3s ease;
   cursor: pointer;
-  min-width: 80px; /* Consistent width */
-}
-
-.mode-chip:hover {
-  border-color: var(--scs-accent);
-  background: var(--scs-light);
+  min-width: auto;
+  white-space: nowrap;
+  margin: 0.25rem;
 }
 
 .mode-chip input[type="checkbox"] {
-  margin: 0; /* Remove default margins */
-  order: -1; /* Move checkbox to top */
+  margin: 0 !important;
+  flex-shrink: 0;
+  transform: scale(1.1);
+  position: relative;
+  top: 0;
 }
 
 .mode-chip span:first-of-type {
@@ -389,29 +445,16 @@ input[type="radio"] {
   border: 1px solid var(--scs-border);
   border-radius: 4px;
   background: white;
+  min-width: 60px;
 }
 
-/* Checked state for mode chips */
-.mode-chip input[type="checkbox"]:checked {
-  accent-color: var(--scs-primary);
+/* Remove debug borders */
+.mode-chip {
+  border: 2px solid var(--scs-border) !important;
 }
 
-.mode-chip input[type="checkbox"]:checked ~ span:first-of-type {
-  color: var(--scs-primary);
-}
-
-.mode-chip input[type="checkbox"]:checked ~ span.muted {
-  color: var(--scs-primary);
-  opacity: 0.8;
-}
-
-.mode-chip input[type="checkbox"]:checked ~ select {
-  border-color: var(--scs-primary);
-}
-
-/* Improved Mode Chips Container */
-.controls .mode-chip {
-  margin-bottom: 0.5rem;
+.mode-chip input[type="checkbox"] {
+  border: none !important;
 }
 
 /* Table styling */
@@ -487,28 +530,61 @@ td.shrink {
   white-space: nowrap;
 }
 
-/* Form element sizing within tables */
+/* Target ALL inputs in table cells - no exceptions */
+td input,
+td select {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 0.75rem 1rem !important;
+  border: 2px solid var(--scs-border) !important;
+  border-radius: var(--border-radius) !important;
+  font-size: 0.95rem !important;
+  font-family: var(--font-body) !important;
+  background: white !important;
+  transition: all 0.3s ease !important;
+  height: 48px !important;
+  line-height: normal !important;
+}
+
+td input:focus,
+td select:focus {
+  outline: none !important;
+  border-color: var(--scs-accent) !important;
+  box-shadow: 0 0 0 3px rgba(0, 163, 224, 0.1) !important;
+  background: var(--scs-light) !important;
+}
+
+/* Remove ALL max-width constraints for table inputs */
+.col-small,
+.col-compact,
+.col-trans {
+  max-width: none !important;
+  width: auto !important;
+}
+
+/* Ensure ALL table inputs have consistent full styling */
 td input[type="number"],
 td input[type="text"],
 td select {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--scs-border);
-  border-radius: 4px;
-  font-size: 0.9rem;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 0.75rem 1rem !important;
+  border: 2px solid var(--scs-border) !important;
+  border-radius: var(--border-radius) !important;
+  font-size: 0.95rem !important;
+  font-family: var(--font-body) !important;
+  background: white !important;
+  transition: all 0.3s ease !important;
+  min-height: 44px !important;
 }
 
-.col-small {
-  max-width: 9rem;
-}
-
-.col-compact {
-  max-width: 7rem;
-}
-
-.col-trans {
-  max-width: 8rem;
+td input[type="number"]:focus,
+td input[type="text"]:focus,
+td select:focus {
+  outline: none !important;
+  border-color: var(--scs-accent) !important;
+  box-shadow: 0 0 0 3px rgba(0, 163, 224, 0.1) !important;
+  background: var(--scs-light) !important;
 }
 
 /* Status messages */
@@ -590,6 +666,26 @@ td select {
   flex: 1;
 }
 
+/* Ensure all toggle checkboxes/radios have proper alignment */
+.toggle input[type="radio"],
+.toggle input[type="checkbox"] {
+  margin: 0 !important;
+  flex-shrink: 0;
+  transform: scale(1.2);
+  position: relative;
+  top: 0;
+}
+
+/* Specifically target mode chip checkboxes */
+.mode-chip.toggle input[type="checkbox"] {
+  margin: 0 !important;
+  order: -1;
+  flex-shrink: 0;
+  transform: scale(1.2);
+  position: relative;
+  top: 0;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   body {
@@ -654,3 +750,4 @@ td select {
     break-inside: avoid;
   }
 }
+

@@ -136,21 +136,17 @@
   <!-- C) Production Data -->
   <fieldset>
     <legend>Production Data (Reporting Period)</legend>
-    <div class="row">
-  <div class="radio-group">
-    <label class="toggle">
-      <input type="radio" name="prod_mode" value="facility_share" required>
-      <span>Facility total production + this product's share</span>
-    </label>
-    <label class="toggle">
-      <input type="radio" name="prod_mode" value="product_direct">
-      <span>Direct product production only</span>
-    </label>
-  </div>
-  <div></div>
-</div>
+    
+    <div class="production-toggle">
+      <button type="button" class="toggle-btn active" data-mode="facility_share">
+        Facility total production + this product's share
+      </button>
+      <button type="button" class="toggle-btn" data-mode="product_direct">
+        Direct product production only
+      </button>
+    </div>
 
-    <div id="prod_facility_share" class="hidden">
+    <div id="prod_facility_share">
       <div class="row-3">
         <label>Facility total production quantity
           <input name="facility_total_qty" type="number" min="0" step="0.0001">
@@ -222,7 +218,7 @@
         <label class="mode-chip"><input type="checkbox" data-mode="air_bom"><span>Air</span><span class="muted">unit</span>
           <select data-mode-unit="air_bom"><option value="km">km</option><option value="mi">mi</option></select></label>
       </div>
-      <div class="controls"><label class="toggle"><input type="checkbox" id="compactToggleBOM" checked> Compact view</label></div>
+      <div class="controls"><label class="toggle"><input type="checkbox" id="compactToggleBOM"> Compact view</label></div>
     </div>
     <div class="help">Enter mass per product (value + unit). Distances are supplier → facility; enter 0 if a mode isn't used.</div>
     <div class="table-wrap">
@@ -252,7 +248,7 @@
         <label class="mode-chip"><input type="checkbox" data-mode="air_pack"><span>Air</span><span class="muted">unit</span>
           <select data-mode-unit="air_pack"><option value="km">km</option><option value="mi">mi</option></select></label>
       </div>
-      <div class="controls"><label class="toggle"><input type="checkbox" id="compactTogglePACK" checked> Compact view</label></div>
+      <div class="controls"><label class="toggle"><input type="checkbox" id="compactTogglePACK"> Compact view</label></div>
     </div>
     <div class="help">Enter mass per product (value + unit) and inbound distances.</div>
     <div class="table-wrap">
@@ -282,8 +278,13 @@
         <label class="mode-chip"><input type="checkbox" data-mode="air_anc"><span>Air</span><span class="muted">unit</span>
           <select data-mode-unit="air_anc"><option value="km">km</option><option value="mi">mi</option></select></label>
       </div>
-      <div class="controls"><label class="toggle"><input type="checkbox" id="compactToggleANC" checked> Compact view</label></div>
-    </div>
+      <div class="controls">
+        <label class="toggle">
+          <input type="checkbox" id="compactToggleANC"> 
+          <span>Compact view</span>
+        </label>
+      </div>
+       </div>
     <div class="help">Ancillary items used in manufacturing (e.g., adhesives, inks).</div>
     <div class="table-wrap">
       <table id="ancTable" aria-label="Ancillary + Transport">
